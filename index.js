@@ -2,6 +2,9 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const config = require('./config');
 const scheduler = require('./scheduler');
+const os = require('os');
+
+const startTime = Date.now();
 
 const client = new Client({
   intents: [
@@ -356,6 +359,55 @@ client.on('messageCreate', async (message) => {
         .setTimestamp();
 
       await message.reply({ embeds: [embed], components: [row1] });
+      return;
+    }
+
+    if (command === 'health' || command === 'status' || command === 'stats' || command === 'ping') {
+      let uptime = Date.now() - startTime;
+      let days = Math.floor(uptime / (24 * 60 * 60 * 1000));
+      let hours = Math.floor((uptime % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+      let minutes = Math.floor((uptime % (60 * 60 * 1000)) / (60 * 1000));
+      let seconds = Math.floor((uptime % (60 * 1000)) / 1000);
+
+      let memUsed = process.memoryUsage();
+      let heapUsedMB = (memUsed.heapUsed / 1024 / 1024).toFixed(2);
+      let heapTotalMB = (memUsed.heapTotal / 1024 / 1024).toFixed(2);
+      let rssMB = (memUsed.rss / 1024 / 1024).toFixed(2);
+
+      let cpuUsage = os.loadavg();
+      let totalMem = (os.totalmem() / 1024 / 1024 / 1024).toFixed(2);
+      let freeMem = (os.freemem() / 1024 / 1024 / 1024).toFixed(2);
+      let usedMem = (totalMem - freeMem).toFixed(2);
+
+      let latency = client.ws.ping;
+      let latencyStatus = latency < 100 ? '🟢' : latency < 200 ? '🟡' : '🔴';
+
+      let statusEmoji = '🟢';
+      if (latency > 200 || heapUsedMB > 400) statusEmoji = '🟡';
+      if (latency > 500 || heapUsedMB > 800) statusEmoji = '🔴';
+
+      let embed = new EmbedBuilder()
+        .setColor(latency < 100 ? 0x00FF00 : latency < 200 ? 0xFFFF00 : 0xFF0000)
+        .setTitle(`${statusEmoji} Bot Health Status`)
+        .setThumbnail(client.user.displayAvatarURL())
+        .addFields(
+          { name: '⏱️ Uptime', value: `${days}d ${hours}h ${minutes}m ${seconds}s`, inline: true },
+          { name: `${latencyStatus} API Latency`, value: `${latency}ms`, inline: true },
+          { name: '📡 WebSocket', value: client.ws.status === 0 ? '🟢 Connected' : '🔴 Disconnected', inline: true },
+          { name: '💾 Bot Memory', value: `${heapUsedMB}MB / ${heapTotalMB}MB`, inline: true },
+          { name: '📊 RSS Memory', value: `${rssMB}MB`, inline: true },
+          { name: '🖥️ System RAM', value: `${usedMem}GB / ${totalMem}GB`, inline: true },
+          { name: '⚙️ CPU Load', value: `${cpuUsage[0].toFixed(2)} (1m avg)`, inline: true },
+          { name: '🌐 Servers', value: `${client.guilds.cache.size}`, inline: true },
+          { name: '👥 Users', value: `${client.users.cache.size}`, inline: true },
+          { name: '📝 Blocked Words', value: `${config.getWordList().length}`, inline: true },
+          { name: '⏰ Scheduled', value: `${scheduler.loadSchedules().length}`, inline: true },
+          { name: '🖥️ Platform', value: `${os.platform()} ${os.arch()}`, inline: true }
+        )
+        .setFooter({ text: `Node.js ${process.version} | Discord.js v14` })
+        .setTimestamp();
+
+      await message.reply({ embeds: [embed] });
       return;
     }
   }
