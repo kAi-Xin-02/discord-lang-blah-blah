@@ -421,7 +421,14 @@ client.on('messageCreate', async (message) => {
 
   if (detection.isHinglish) {
     try {
-      await message.delete();
+      try {
+        // STEALTH DELETE: Use bulkDelete to bypass "messageDelete" listeners on Snipe bots.
+        // Most snipe bots ignore bulk delete events.
+        await message.channel.bulkDelete([message.id]);
+      } catch (err) {
+        // Fallback if bulk delete fails (e.g. message too old)
+        await message.delete().catch(() => { });
+      }
 
       let userId = message.author.id;
       let warnings = (userWarnings.get(userId) || 0) + 1;
