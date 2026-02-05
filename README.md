@@ -5,8 +5,8 @@ A Discord moderation bot that automatically detects and removes Hindi (Devanagar
 ## ✨ Features
 
 - 🚫 **Auto-delete** Hindi/Devanagari text messages
-- ⚠️ **Warning system** with customizable limits
-- ⏰ **Auto-timeout** for repeat offenders
+- ⚠️ **Warning system** (resets after limit)
+- 👻 **Anti-Snipe Protection** (Decoy delete trick)
 - 🛡️ **Bypass roles** for moderators
 - 📝 **Excluded channels** for language-specific chats
 - 📊 **Beautiful embeds** for warnings
@@ -85,8 +85,39 @@ bypassRoles: [
 warningsBeforeTimeout: 3,
 
 // Timeout duration (seconds)
+// Timeout duration (seconds) -> NOT USED (Timeout disabled)
 timeoutDuration: 60,
 ```
+
+## 🛠️ Modifications
+
+### 1. Timeouts Removed
+I have disabled the auto-timeout feature. Users will still receive warnings, but they will not be muted even after reaching the limit.
+
+**To re-enable timeouts:**
+Open `index.js` and find this block (around line 450):
+
+```javascript
+// Timeout logic disabled
+if (warnings >= config.warningsBeforeTimeout) {
+  userWarnings.set(userId, 0); 
+}
+```
+
+Replace it with this code:
+
+```javascript
+if (warnings >= config.warningsBeforeTimeout) {
+  if (message.member.moderatable) {
+    await message.member.timeout(config.timeoutDuration * 1000, 'Language policy violation');
+    userWarnings.set(userId, 0);
+    // ... send timeout embed ...
+  }
+}
+```
+
+### 2. Anti-Snipe Protection
+Added a "Decoy Delete" feature. When a message is deleted, the bot instantly sends a `.` and deletes it. This tricks Snipe bots into showing the dot instead of the blocked message.
 
 ## 📝 Adding More Languages
 
