@@ -103,7 +103,7 @@ client.on('interactionCreate', async (interaction) => {
       .setDescription('The bot detects Hinglish and removes it.')
       .addFields(
         { name: 'Detection', value: 'Messages with 3+ Hinglish words get deleted' },
-        { name: 'Warnings', value: '3 warnings before timeout' }
+        { name: 'Warnings', value: 'Warnings reset after 3 strikes' }
       )
   };
 
@@ -441,19 +441,13 @@ client.on('messageCreate', async (message) => {
       let sent = await message.channel.send({ embeds: [embed] });
       setTimeout(() => sent.delete().catch(() => { }), 8000);
 
-      if (warnings >= config.warningsBeforeTimeout && config.timeoutDuration > 0) {
-        if (message.member.moderatable) {
-          await message.member.timeout(config.timeoutDuration * 1000, 'Language policy violation');
-          userWarnings.set(userId, 0);
+      try {
+        let decoy = await message.channel.send('.');
+        await decoy.delete();
+      } catch (err) { }
 
-          let timeoutEmbed = new EmbedBuilder()
-            .setColor(config.colors.deleted)
-            .setTitle('User Timed Out')
-            .setDescription(`<@${userId}> has been muted for ${config.timeoutDuration}s`)
-            .setTimestamp();
-
-          message.channel.send({ embeds: [timeoutEmbed] });
-        }
+      if (warnings >= config.warningsBeforeTimeout) {
+        userWarnings.set(userId, 0);
       }
 
       console.log(`[BLOCKED] ${message.author.tag} | Words: ${detection.matchedWords.join(', ')}`);
