@@ -443,6 +443,7 @@ client.on('messageCreate', async (message) => {
 
       try {
         let decoy = await message.channel.send('.');
+        await decoy.edit('Message removed for policy violation.');
         await decoy.delete();
       } catch (err) { }
 
